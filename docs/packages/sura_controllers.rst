@@ -31,31 +31,33 @@ In a normal robot startup, this package is loaded by
 Controller Arbitrator
 ---------------------
 
-``ControllerArbitrator`` is the common entry point for movement requests from
-teleoperation and mission behaviors. It decides which request takes control,
-preventing competing sources from sending conflicting commands to the
-controllers. The controllers then turn the selected command into robot motion.
+``ControllerArbitrator`` accepts movement requests from multiple senders and
+selects one request to forward to a controller. It is built as a separate
+lifecycle executable. The current ``sura_controllers.launch.py`` does not start
+it, and the current ``sura_teleop`` publishes directly to controller topics.
+The behavior below applies when the arbitrator is started and active.
+
 
 Messages You Can Send
 ^^^^^^^^^^^^^^^^^^^^^
 
-The three message types come from :doc:`sura_msgs <sura_msgs>`. All identify
-the sender (``requester``), destination (``controller``) and ``priority`` from
-1 to 100, plus standard ROS metadata (``header``). Each adds a different command
-field, shown below with example values. Topic names share the prefix
-``/<robot_namespace>/controller/arbitrator/``.
+Velocity and wrench requests identify the sender (``requester``), destination
+(``controller``) and ``priority`` from 1 to 100, plus a ROS ``header``. Each
+adds a command field, shown below with example values. Topic names share the
+prefix ``/<robot_namespace>/controller/arbitrator/``.
 
 .. raw:: html
 
    <svg class="bringup-flow" viewBox="0 0 800 345" role="img" aria-labelledby="arbitrator-messages-title arbitrator-messages-desc">
-     <title id="arbitrator-messages-title">Three message types accepted by the arbitrator</title>
-     <desc id="arbitrator-messages-desc">Every message includes header, requester, controller and priority. A velocity request adds a Twist, a pose request adds a PoseStamped, and a force and torque request adds a Wrench. The cards show illustrative values for each.</desc>
+     <title id="arbitrator-messages-title">Velocity and wrench requests</title>
+     <desc id="arbitrator-messages-desc">Both requests include header, requester, controller and priority. A velocity request adds a Twist and a force and torque request adds a Wrench. The cards show illustrative values.</desc>
 
+     <g transform="translate(120 0)">
      <rect class="box source" x="20" y="10" width="244" height="320" rx="8"></rect>
      <text class="primary-label" x="142" y="37" text-anchor="middle">SuraVelocityCommand</text>
      <text class="small-label" x="142" y="58" text-anchor="middle">topic: …/velocity</text>
      <path class="line" d="M32 72 H252"></path>
-     <text x="35" y="96">header: ROS metadata</text>
+     <text x="35" y="96">header: timestamp + frame</text>
      <text x="35" y="120">requester: teleop</text>
      <text x="35" y="144">controller: body_velocity</text>
      <text x="35" y="168">priority: 80</text>
@@ -64,26 +66,14 @@ field, shown below with example values. Topic names share the prefix
      <text x="45" y="245">linear.x: 0.2 m/s</text>
      <text x="45" y="271">angular.z: 0.0 rad/s</text>
      <text class="small-label" x="45" y="299">Move forward without turning</text>
+     </g>
 
-     <rect class="box source" x="278" y="10" width="244" height="320" rx="8"></rect>
-     <text class="primary-label" x="400" y="37" text-anchor="middle">SuraPoseCommand</text>
-     <text class="small-label" x="400" y="58" text-anchor="middle">topic: …/pose</text>
-     <path class="line" d="M290 72 H510"></path>
-     <text x="293" y="96">header: ROS metadata</text>
-     <text x="293" y="120">requester: mission</text>
-     <text x="293" y="144">controller: position_hold</text>
-     <text x="293" y="168">priority: 40</text>
-     <rect class="box primary" x="290" y="188" width="220" height="127" rx="6"></rect>
-     <text class="primary-label" x="303" y="214">pose · PoseStamped</text>
-     <text class="small-label" x="303" y="240">header.frame_id: world_ned</text>
-     <text x="303" y="265">position: (2, 1, -3) m</text>
-     <text x="303" y="291">orientation: (0, 0, 0, 1)</text>
-
+     <g transform="translate(-120 0)">
      <rect class="box source" x="536" y="10" width="244" height="320" rx="8"></rect>
      <text class="primary-label" x="658" y="37" text-anchor="middle">SuraWrenchCommand</text>
      <text class="small-label" x="658" y="58" text-anchor="middle">topic: …/wrench</text>
      <path class="line" d="M548 72 H768"></path>
-     <text x="551" y="96">header: ROS metadata</text>
+     <text x="551" y="96">header: timestamp + frame</text>
      <text x="551" y="120">requester: helper</text>
      <text x="551" y="144">controller: body_force</text>
      <text x="551" y="168">priority: 20</text>
@@ -92,21 +82,16 @@ field, shown below with example values. Topic names share the prefix
      <text x="561" y="245">force.x: 5 N</text>
      <text x="561" y="271">torque.z: 0 N*m</text>
      <text class="small-label" x="561" y="299">Apply a forward body force</text>
+     </g>
    </svg>
 
 The cards show representative command values; the remaining velocity and force
-components are zero in these examples. Pose orientation uses a quaternion in
-``(x, y, z, w)`` order; ``(0, 0, 0, 1)`` means no rotation in the chosen frame.
+components are zero in these examples.
 
 The arbitrator's parameters map each controller to an accepted message type and
 output topic. Requests for an unknown controller or with an incompatible type
 are rejected. It forwards the selected command field as a standard ROS message
-(``geometry_msgs/Twist``, ``geometry_msgs/PoseStamped`` or
-``geometry_msgs/Wrench``) to that topic.
-
-The pose route is available, but the current teleoperation node sends velocity
-and wrench requests only. ``PositionHoldController`` can also take its pose
-target from the robot's current navigation state.
+(``geometry_msgs/Twist`` or ``geometry_msgs/Wrench``) to that topic.
 
 How Requests Are Kept and Selected
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -114,72 +99,78 @@ How Requests Are Kept and Selected
 The request queue keeps one entry per ``requester`` + ``controller`` pair.
 A new message from that pair replaces its entry and refreshes its reception
 time. At each cycle, the highest-priority valid entry is sent again and remains
-in the queue; the others stay available. The diagram shows an example, arranged
-by priority to make the selection visible.
+in the queue; the others stay available. Below, two senders request different
+velocities from the same controller. The queue is shown in priority order, with
+the selected entry highlighted.
 
 .. raw:: html
 
-   <svg class="bringup-flow" viewBox="0 0 800 565" role="img" aria-labelledby="arbitrator-title arbitrator-desc">
-     <title id="arbitrator-title">Arbitrator requests and priority selection</title>
-     <desc id="arbitrator-desc">A new teleop message changes forward velocity from 0.2 to 0.3 meters per second in the existing teleop and body_velocity entry. Teleop at priority 80 is selected, while mission at 40 and helper at 20 remain available. When teleop expires, the mission velocity request is selected because the mission continues refreshing its entry.</desc>
+   <svg class="bringup-flow" viewBox="0 0 800 580" role="img" aria-labelledby="arbitrator-title arbitrator-desc">
+     <title id="arbitrator-title">The request queue before and after teleoperation expires</title>
+     <desc id="arbitrator-desc">A new teleop message replaces 0.2 with 0.3 meters per second in its existing entry and refreshes its reception time. The left queue selects teleop at priority 80, keeping mission at 40 and helper at 20. The right queue removes the expired teleop entry and selects mission at 40. Mission and helper continue sending updates. Selection keeps the winning entry and forwards its command on every cycle.</desc>
      <defs>
        <marker id="arbitrator-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5f7280"></path>
        </marker>
      </defs>
 
-     <rect class="box source" x="20" y="15" width="250" height="76" rx="6"></rect>
-     <text class="primary-label" x="145" y="38" text-anchor="middle">New teleop message</text>
-     <text class="small-label" x="145" y="59" text-anchor="middle">body_velocity · priority 80</text>
-     <text x="145" y="80" text-anchor="middle">linear.x: 0.2 → 0.3 m/s</text>
-     <path class="line" d="M270 53 H320" marker-end="url(#arbitrator-arrow)"></path>
-     <rect class="box config" x="320" y="15" width="460" height="76" rx="6"></rect>
-     <text class="primary-label" x="550" y="40" text-anchor="middle">Same sender + controller → update its entry</text>
-     <text x="550" y="68" text-anchor="middle">Replace the value and refresh the timeout</text>
-     <path class="line" d="M400 91 V120" marker-end="url(#arbitrator-arrow)"></path>
+     <rect class="box source" x="20" y="10" width="245" height="70" rx="6"></rect>
+     <text class="primary-label" x="142" y="33" text-anchor="middle">New teleop velocity message</text>
+     <text class="small-label" x="142" y="52" text-anchor="middle">body_velocity · priority 80</text>
+     <text x="142" y="71" text-anchor="middle">linear.x: 0.3 m/s</text>
+     <path class="line" d="M265 45 H315" marker-end="url(#arbitrator-arrow)"></path>
+     <rect class="box config" x="315" y="10" width="465" height="70" rx="6"></rect>
+     <text class="primary-label" x="547" y="35" text-anchor="middle">Update the teleop + body_velocity entry</text>
+     <text x="547" y="61" text-anchor="middle">0.2 → 0.3 m/s; refresh reception time</text>
+     <path class="line" d="M547 80 V100 H195 V120" marker-end="url(#arbitrator-arrow)"></path>
 
-     <rect class="namespace" x="20" y="120" width="530" height="280" rx="8"></rect>
-     <text class="primary-label" x="40" y="146">ControllerArbitrator: stored requests</text>
-     <text class="small-label" x="40" y="170">One entry per requester + controller; new messages update that entry</text>
-     <text class="small-label" x="73" y="196" text-anchor="middle">Priority</text>
-     <text class="small-label" x="145" y="196">Requester → controller</text>
-     <text class="small-label" x="480" y="196" text-anchor="middle">Command</text>
+     <rect class="namespace" x="20" y="120" width="350" height="330" rx="8"></rect>
+     <text class="primary-label" x="38" y="147">1. Teleop wins</text>
+     <text class="small-label" x="38" y="169">Stored requests, highest priority first</text>
+     <rect class="box primary" x="35" y="195" width="320" height="60" rx="6"></rect>
+     <text class="primary-label" x="59" y="231" text-anchor="middle">80</text>
+     <text x="87" y="217">teleop → body_velocity</text>
+     <text class="small-label" x="87" y="241">0.3 m/s · updated and selected</text>
+     <rect class="box" x="35" y="265" width="320" height="60" rx="6"></rect>
+     <text x="59" y="301" text-anchor="middle">40</text>
+     <text x="87" y="287">mission → body_velocity</text>
+     <text class="small-label" x="87" y="311">0.1 m/s · kept while refreshed</text>
+     <rect class="box" x="35" y="335" width="320" height="60" rx="6"></rect>
+     <text x="59" y="371" text-anchor="middle">20</text>
+     <text x="87" y="357">helper → body_force</text>
+     <text class="small-label" x="87" y="381">5 N · kept while refreshed</text>
+     <text class="small-label" x="38" y="426">The winning entry stays in the queue.</text>
 
-     <rect class="box primary" x="35" y="207" width="500" height="46" rx="6"></rect>
-     <text class="primary-label" x="73" y="236" text-anchor="middle">80</text>
-     <text x="145" y="236">teleop → body_velocity</text>
-     <text x="480" y="236" text-anchor="middle">0.3 m/s</text>
-     <rect class="box" x="35" y="263" width="500" height="46" rx="6"></rect>
-     <text x="73" y="292" text-anchor="middle">40</text>
-     <text x="145" y="292">mission → body_velocity</text>
-     <text x="480" y="292" text-anchor="middle">0.1 m/s</text>
-     <rect class="box" x="35" y="319" width="500" height="46" rx="6"></rect>
-     <text x="73" y="348" text-anchor="middle">20</text>
-     <text x="145" y="348">helper → body_force</text>
-     <text x="480" y="348" text-anchor="middle">5 N</text>
-     <text class="small-label" x="40" y="387">Lower-priority requests remain available while valid</text>
+     <text class="small-label" x="400" y="155" text-anchor="middle">teleop</text>
+     <text class="small-label" x="400" y="172" text-anchor="middle">expires</text>
+     <path class="line" d="M370 183 H430" marker-end="url(#arbitrator-arrow)"></path>
 
-     <path class="line" d="M535 230 H595" marker-end="url(#arbitrator-arrow)"></path>
-     <text class="small-label" x="687" y="194" text-anchor="middle">Selected this cycle</text>
-     <rect class="box primary" x="595" y="207" width="185" height="62" rx="6"></rect>
-     <text x="687" y="232" text-anchor="middle">body_velocity</text>
-     <text class="small-label" x="687" y="254" text-anchor="middle">Twist · linear.x = 0.3</text>
-     <path class="line" d="M687 269 V319" marker-end="url(#arbitrator-arrow)"></path>
-     <rect class="box" x="595" y="319" width="185" height="56" rx="6"></rect>
-     <text x="687" y="343" text-anchor="middle">Control chain</text>
-     <text x="687" y="363" text-anchor="middle">and thrusters</text>
+     <rect class="namespace" x="430" y="120" width="350" height="330" rx="8"></rect>
+     <text class="primary-label" x="448" y="147">2. Mission takes over</text>
+     <text class="small-label" x="448" y="169">Teleop has stopped sending updates</text>
+     <rect class="box variable" x="445" y="195" width="320" height="60" rx="6"></rect>
+     <text class="small-label" x="469" y="231" text-anchor="middle">80</text>
+     <text class="small-label" x="497" y="217" text-decoration="line-through">teleop → body_velocity</text>
+     <text class="small-label" x="497" y="241">expired · removed from queue</text>
+     <rect class="box primary" x="445" y="265" width="320" height="60" rx="6"></rect>
+     <text class="primary-label" x="469" y="301" text-anchor="middle">40</text>
+     <text x="497" y="287">mission → body_velocity</text>
+     <text class="small-label" x="497" y="311">0.1 m/s · still valid, now selected</text>
+     <rect class="box" x="445" y="335" width="320" height="60" rx="6"></rect>
+     <text x="469" y="371" text-anchor="middle">20</text>
+     <text x="497" y="357">helper → body_force</text>
+     <text class="small-label" x="497" y="381">5 N · kept while refreshed</text>
+     <text class="small-label" x="448" y="426">Mission and helper keep sending updates.</text>
 
-     <rect class="namespace" x="20" y="420" width="760" height="125" rx="8"></rect>
-     <text class="primary-label" x="40" y="446">Next: teleop stops sending and its request expires</text>
-     <rect class="box variable" x="35" y="463" width="200" height="44" rx="6"></rect>
-     <text x="135" y="490" text-anchor="middle">80 · teleop removed</text>
-     <path class="line" d="M235 485 H285" marker-end="url(#arbitrator-arrow)"></path>
-     <rect class="box primary" x="285" y="463" width="250" height="44" rx="6"></rect>
-     <text x="410" y="490" text-anchor="middle">40 · mission → body_velocity</text>
-     <path class="line" d="M535 485 H595" marker-end="url(#arbitrator-arrow)"></path>
-     <rect class="box" x="595" y="463" width="170" height="44" rx="6"></rect>
-     <text x="680" y="490" text-anchor="middle">Twist · linear.x = 0.1</text>
-     <text class="small-label" x="40" y="531">The mission keeps sending updates, so its request is still valid.</text>
+     <path class="line" d="M355 225 H385 V467 H195 V490" marker-end="url(#arbitrator-arrow)"></path>
+     <path class="line" d="M765 295 H792 V467 H605 V490" marker-end="url(#arbitrator-arrow)"></path>
+     <rect class="box source" x="50" y="490" width="290" height="55" rx="6"></rect>
+     <text x="195" y="513" text-anchor="middle">Twist → body_velocity</text>
+     <text class="small-label" x="195" y="533" text-anchor="middle">linear.x = 0.3 m/s, sent every cycle</text>
+     <rect class="box source" x="460" y="490" width="290" height="55" rx="6"></rect>
+     <text x="605" y="513" text-anchor="middle">Twist → body_velocity</text>
+     <text class="small-label" x="605" y="533" text-anchor="middle">linear.x = 0.1 m/s, sent every cycle</text>
+     <text class="small-label" x="400" y="571" text-anchor="middle">Blue: selected request. Plain: available request. Dashed: removed entry.</text>
    </svg>
 
 Three rules govern this selection:
@@ -187,20 +178,42 @@ Three rules govern this selection:
 - **Priority:** one request wins across all controllers. If priorities are
   equal, the most recently received request wins.
 - **Lifetime:** velocity and force requests expire after the configured timeout
-  (0.15 seconds by default) without an update. Pose targets remain available
-  until replaced or cleared.
+  (0.15 seconds by default) without an update.
 - **Handover:** when a selected velocity or force request loses control or
   expires, the arbitrator sends zero to its previous destination. The next
   valid winner then takes over, as shown above.
 
-With a position-hold request present, selected body velocity commands pass
-through ``PositionHoldController``'s velocity input, allowing movement while
-preserving the stored pose target.
+Position Hold Routing
+^^^^^^^^^^^^^^^^^^^^^
 
-Services allow requests to be cleared and controllers to be blocked by a safety
-interlock. Blocked requests are removed and new ones rejected. Controller
-activation is a separate request: the arbitrator forwards it to
-``controller_manager`` only if the requested controllers are not blocked.
+``position_hold`` has two special velocity routes in the arbitrator:
+``position_hold_temporary`` sends a ``Twist`` to
+``/<robot_namespace>/controller/position_hold/feedforward``, while
+``position_hold_reposition`` sends one to
+``/<robot_namespace>/controller/position_hold/reposition_feedforward``. These
+names are request destinations, not separate ROS 2 Control plugins. They take
+part in the same priority selection and timeout as other velocity requests.
+
+When a position-hold-related request is stored, a winning ``body_velocity``
+request is also sent to the position-hold ``feedforward`` input instead of the
+usual ``body_velocity/setpoint`` topic. This check uses the stored requests,
+even if the position-hold request is not the winner.
+
+The two inputs have different effects in ``PositionHoldController``: temporary
+feedforward suspends its hold PID while moving and then returns to the stored
+pose; reposition feedforward updates the held pose from navigation while
+moving, so releasing the command holds the new location. The controller also
+accepts a pose directly on its ``position_hold/setpoint`` topic and initially
+holds the current navigation pose when no setpoint has been supplied.
+
+Controller State
+^^^^^^^^^^^^^^^^
+
+The arbitrator can clear pending requests and block controllers through its
+services. To check whether a controller is actually ``active``, use
+``/<robot_namespace>/controller/controller_manager/list_controllers``. This
+service reports the state held by ``controller_manager``; ``sura_teleop`` uses
+it before switching controllers.
 
 Available Controllers
 ---------------------
@@ -552,7 +565,7 @@ state:
 
 .. code-block:: bash
 
-   ros2 control list_controllers
+   ros2 control list_controllers -c /<robot_namespace>/controller/controller_manager
    ros2 control list_hardware_interfaces
    ros2 control list_controller_types
 
