@@ -26,10 +26,6 @@ The architecture is meant to keep growing, so more sensors, more actuators, new
 payloads, and vehicle-specific interfaces can be integrated without redesigning
 the rest of the system. Sensible engineering, suspiciously rare in the wild.
 
-This work has been developed at
-[CIRTESU](https://blogs.uji.es/cirtesu/), the Research Centre for Robotics and
-Underwater Technologies at Universitat Jaume I.
-
 ## Architecture 🧭
 
 The workspace is organized into several layers:
