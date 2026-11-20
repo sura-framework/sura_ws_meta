@@ -223,7 +223,7 @@ open_shell() {
   require_docker
   ensure_config_exists
 
-  compose exec main bash -lc '
+  compose exec sura_stonefish bash -lc '
     ulimit -c 0
 
     source /opt/ros/humble/setup.bash

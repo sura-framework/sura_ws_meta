@@ -29,5 +29,5 @@ html_theme_options = {
 }
 
 html_context = {
-    "github_repo_url": "https://github.com/slopezba/sura_ws_meta",
+    "github_repo_url": "https://github.com/sura-framework/sura_ws_meta",
 }

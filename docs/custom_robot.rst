@@ -114,10 +114,10 @@ From the robot Raspberry Pi, clone the main SURA repository:
 
 .. code-block:: bash
 
-   git clone https://github.com/slopezba/sura_ws_meta.git
+   git clone https://github.com/sura-framework/sura_ws_meta.git
    cd sura_ws_meta
 
-The URL ``https://github.com/slopezba/sura_ws_meta/tree/main`` is useful for
+The URL ``https://github.com/sura-framework/sura_ws_meta/tree/main`` is useful for
 viewing the repository in a browser, but the terminal clone command uses the URL
 ending in ``.git``.
 
@@ -465,7 +465,7 @@ Complete Setup Summary
 #. Insert the microSD card into the robot Raspberry Pi.
 #. Boot the robot and connect through SSH.
 #. Install Docker.
-#. Clone ``https://github.com/slopezba/sura_ws_meta.git``.
+#. Clone ``https://github.com/sura-framework/sura_ws_meta.git``.
 #. Clone or create ``src/<robot_namespace>_description``.
 #. Configure ``bringup_description.yaml``.
 #. Create or adapt the robot xacro.

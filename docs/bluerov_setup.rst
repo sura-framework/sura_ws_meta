@@ -103,10 +103,10 @@ From the Raspberry Pi, clone the main repository:
 
 .. code-block:: bash
 
-   git clone https://github.com/slopezba/sura_ws_meta.git
+   git clone https://github.com/sura-framework/sura_ws_meta.git
    cd sura_ws_meta
 
-The URL ``https://github.com/slopezba/sura_ws_meta/tree/main`` is useful for
+The URL ``https://github.com/sura-framework/sura_ws_meta/tree/main`` is useful for
 viewing the repository in a browser, but the terminal clone command uses the URL
 ending in ``.git``.
 
@@ -115,7 +115,7 @@ directory:
 
 .. code-block:: bash
 
-   git clone https://github.com/inesperez03/bluerov_description.git src/bluerov_description
+   git clone https://github.com/sura-framework/bluerov_description.git src/bluerov_description
 
 This package contains the robot xacro, meshes, bringup description and
 ``ros2_control`` parameters used to describe the physical BlueROV Heavy.
@@ -397,7 +397,7 @@ Complete Setup Summary
 #. Insert the microSD card into the BlueROV Heavy Raspberry Pi.
 #. Boot the robot and connect through SSH.
 #. Install Docker.
-#. Clone ``https://github.com/slopezba/sura_ws_meta.git``.
+#. Clone ``https://github.com/sura-framework/sura_ws_meta.git``.
 #. Run ``./install.sh``.
 #. Start the environment with ``sura start``.
 #. Enter the container with ``sura shell``.

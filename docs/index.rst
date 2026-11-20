@@ -24,6 +24,7 @@ robots.
    simulation
    packages
    robot_setup
+   real_robot_integrations
    development
    changelog
    license

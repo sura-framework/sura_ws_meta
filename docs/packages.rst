@@ -15,6 +15,7 @@ the whole stack.
    packages/sura_sensors
    packages/sura_cameras
    packages/sura_controllers
+   packages/sura_actions
    packages/sura_imu
    packages/sura_localization
    packages/sura_navigator

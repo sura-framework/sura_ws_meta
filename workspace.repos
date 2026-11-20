@@ -1,4 +1,24 @@
 repositories:
+  girona500_description:
+    type: git
+    url: https://github.com/sura-framework/girona500_description.git
+    version: main
+
+  bluerov_description:
+    type: git
+    url: https://github.com/sura-framework/bluerov_description.git
+    version: main
+
+  blueboat_description:
+    type: git
+    url: https://github.com/Mariolopez31/blueboat_description.git
+    version: bt
+
+  cirtesub_description:
+    type: git
+    url: https://github.com/sura-framework/cirtesub_description.git
+    version: sim
+
   sura_controllers:
     type: git
     url: https://github.com/slopezba/sura_controllers.git

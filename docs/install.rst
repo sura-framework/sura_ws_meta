@@ -1,5 +1,5 @@
-Installation
-============
+Robot Installation
+==================
 
 The intended onboard setup starts with a Raspberry Pi connected to the
 `Blue Robotics Navigator <https://bluerobotics.com/store/comm-control-power/control/navigator/>`_
@@ -25,7 +25,7 @@ Clone the workspace and enter it:
 
 .. code-block:: bash
 
-   git clone https://github.com/slopezba/sura_ws_meta.git
+   git clone https://github.com/sura-framework/sura_ws_meta.git
    cd sura_ws_meta
 
 Install the Command
@@ -64,6 +64,18 @@ To open an interactive terminal inside the container:
 .. code-block:: bash
 
    sura shell
+
+Clone the Workspace Repositories
+--------------------------------
+
+Inside ``sura shell``, the ``src`` workspace is initially empty. From the
+workspace root, create the directory and clone all repositories listed in
+``workspace.repos``:
+
+.. code-block:: bash
+
+   mkdir -p src
+   vcs import src < workspace.repos
 
 Stop the Runtime
 ----------------

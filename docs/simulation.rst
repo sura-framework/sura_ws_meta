@@ -1,11 +1,13 @@
-Simulation
-==========
+Simulation Installation and Setup
+=================================
 
-SURA can also be used with `Stonefish <https://stonefish.readthedocs.io/en/latest/>`_
-to test the robot in simulation before running it on real hardware.
+This guide explains how to install and set up the
+`Stonefish <https://stonefish.readthedocs.io/en/latest/>`_ simulation environment
+for SURA using Docker. It then shows how to launch a simulated robot, SURA and
+the teleoperation tools so you can test the robot before using real hardware.
 
-This setup uses Docker and requires a computer with an NVIDIA GPU and the NVIDIA
-container runtime installed.
+Before starting, install Docker and the NVIDIA container runtime on a computer
+with an NVIDIA GPU.
 
 Create a Simulation Folder
 --------------------------
@@ -32,7 +34,10 @@ Paste this content:
 
    services:
      sura_stonefish:
-       image: inesperez03/sura-stonefish-ros2-humble:latest
+       build:
+         context: .
+         dockerfile: Dockerfile.girona500
+       image: inesperez03/sura-stonefish-ros2-humble:girona500
        container_name: sura_stonefish
 
        network_mode: host
@@ -64,18 +69,38 @@ Paste this content:
                  count: all
                  capabilities: [gpu]
 
-       command: >
-         bash -lc "
+       command:
+         - bash
+         - -lc
+         - |
+           set -e
            if [ ! -d /root/sura_ws_meta ]; then
-             git clone https://github.com/slopezba/sura_ws_meta.git /root/sura_ws_meta &&
-             cd /root/sura_ws_meta &&
-             source /opt/ros/humble/setup.bash &&
-             mkdir -p src &&
-             vcs import src < workspace.repos &&
+             git clone https://github.com/sura-framework/sura_ws_meta.git /root/sura_ws_meta
+             cd /root/sura_ws_meta
+             mkdir -p src
+             vcs import src < workspace.repos
+           fi
+           cd /root/sura_ws_meta
+           if [ ! -d src/bluerov_description ] ||
+              [ ! -d src/girona500_description ] ||
+              [ ! -d src/cirtesub_description ] ||
+              [ ! -d src/blueboat_description ]; then
+             if [ ! -d src/bluerov_description ]; then
+               git clone https://github.com/sura-framework/bluerov_description.git src/bluerov_description
+             fi
+             if [ ! -d src/girona500_description ]; then
+               git clone https://github.com/sura-framework/girona500_description.git src/girona500_description
+             fi
+             if [ ! -d src/cirtesub_description ]; then
+               git clone --branch sim https://github.com/sura-framework/cirtesub_description.git src/cirtesub_description
+             fi
+             if [ ! -d src/blueboat_description ]; then
+               git clone --branch bt https://github.com/Mariolopez31/blueboat_description.git src/blueboat_description
+             fi
+             source /opt/ros/humble/setup.bash
              colcon build
-           fi &&
+           fi
            sleep infinity
-         "
 
 This example uses ``ROS_DOMAIN_ID=4`` and Cyclone DDS:
 
@@ -121,9 +146,10 @@ Inside the first Docker terminal, prepare the environment:
 
 .. code-block:: bash
 
-   cd /root/sura_ws_meta
+   cd /root
    source /opt/ros/humble/setup.bash
-   source install/setup.bash
+   source sura_ws_meta/install/setup.bash
+   source stonefish_enviroments/install/setup.bash
 
 Then launch one simulation. Use only one of these commands:
 
@@ -159,6 +185,14 @@ Then launch one simulation. Use only one of these commands:
    :alt: Catamaran Stonefish simulation
    :width: 420px
 
+.. code-block:: bash
+
+   ros2 launch girona500_stonefish girona500_cirtesu.launch.py
+
+.. image:: _static/girona500_stonefish.png
+   :alt: Girona500 Stonefish simulation
+   :width: 420px
+
 Terminal 2: Launch SURA
 -----------------------
 
@@ -178,12 +212,15 @@ namespace for the robot that is running in Stonefish:
      - ``blueboat``
    * - Catamaran
      - ``catamaran``
+   * - Girona500
+     - ``girona500``
 
 .. code-block:: bash
 
-   cd /root/sura_ws_meta
+   cd /root
    source /opt/ros/humble/setup.bash
-   source install/setup.bash
+   source sura_ws_meta/install/setup.bash
+   source stonefish_enviroments/install/setup.bash
    ros2 launch sura_bringup sura_bringup.launch.py robot_namespace:=robot_name
 
 Terminal 3: Launch Teleoperation
@@ -194,9 +231,10 @@ RViz and the joystick teleoperation tools from :doc:`packages/sura_teleop`:
 
 .. code-block:: bash
 
-   cd /root/sura_ws_meta
+   cd /root
    source /opt/ros/humble/setup.bash
-   source install/setup.bash
+   source sura_ws_meta/install/setup.bash
+   source stonefish_enviroments/install/setup.bash
    ros2 launch sura_bringup sura_gcs.launch.py robot_namespace:=robot_name
 
 .. image:: _static/rviz_teleoperation.png

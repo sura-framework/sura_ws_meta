@@ -1,6 +1,13 @@
 Overview
 ========
 
+Welcome to SURA Documentation
+-----------------------------
+
+.. image:: _static/sura_robots_collage.png
+   :alt: SURA surface and underwater robotic vehicles
+   :width: 100%
+
 SURA stands for **Surface and Underwater Robotic Architecture**. It is a
 modular robotics architecture built on **ROS 2 Humble** for surface and
 underwater robotic vehicles.
