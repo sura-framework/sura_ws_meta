@@ -1,60 +1,65 @@
 repositories:
   sura_controllers:
     type: git
-    url: https://github.com/slopezba/sura_controllers.git
+    url: https://github.com/sura-framework/sura_controllers.git
     version: main
 
   cirtesu_tank_aruco_localization:
     type: git
-    url: https://github.com/slopezba/cirtesu_tank_aruco_localization.git
+    url: https://github.com/sura-framework/cirtesu_tank_aruco_localization.git
     version: ros2_humble
 
   sura_bringup:
     type: git
-    url: https://github.com/slopezba/sura_bringup.git
+    url: https://github.com/sura-framework/sura_bringup.git
     version: main
 
   sura_cameras:
     type: git
-    url: https://github.com/slopezba/sura_cameras.git
+    url: https://github.com/sura-framework/sura_cameras.git
     version: main
 
   sura_diagnostics:
     type: git
-    url: https://github.com/slopezba/sura_diagnostics.git
+    url: https://github.com/sura-framework/sura_diagnostics.git
     version: main
 
   sura_hardware_interface:
     type: git
-    url: https://github.com/inesperez03/sura_hardware_interface.git
+    url: https://github.com/sura-framework/sura_hardware_interface.git
     version: main
 
   sura_imu:
     type: git
-    url: https://github.com/inesperez03/sura_imu.git
+    url: https://github.com/sura-framework/sura_imu.git
     version: main
 
   sura_localization:
     type: git
-    url: https://github.com/slopezba/sura_localization.git
+    url: https://github.com/sura-framework/sura_localization.git
     version: main
 
   sura_msgs:
     type: git
-    url: https://github.com/inesperez03/sura_msgs.git
+    url: https://github.com/sura-framework/sura_msgs.git
     version: main
 
   sura_navigator:
     type: git
-    url: https://github.com/slopezba/sura_navigator.git
+    url: https://github.com/sura-framework/sura_navigator.git
     version: main
 
   sura_sensors:
     type: git
-    url: https://github.com/inesperez03/sura_sensors.git
+    url: https://github.com/sura-framework/sura_sensors.git
     version: main
 
   sura_teleop:
     type: git
-    url: https://github.com/slopezba/sura_teleop.git
+    url: https://github.com/sura-framework/sura_teleop.git
+    version: main
+
+  sura_actions:
+    type: git
+    url: https://github.com/sura-framework/sura_actions.git
     version: main
